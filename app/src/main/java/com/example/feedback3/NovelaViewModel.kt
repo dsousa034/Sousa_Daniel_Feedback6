@@ -1,54 +1,51 @@
 package com.example.feedback3
 
-import android.app.Application
-import androidx.compose.runtime.mutableStateListOf
-import androidx.lifecycle.AndroidViewModel
-import androidx.lifecycle.viewModelScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
+import android.util.Log
+import androidx.lifecycle.ViewModel
+import com.google.firebase.database.*
+import com.google.firebase.database.DatabaseReference
+import com.google.firebase.database.FirebaseDatabase
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
-class NovelaViewModel(application: Application) : AndroidViewModel(application) {
-    private val novelaDao = NovelaDao(application)
-    private val _novelas = mutableStateListOf<Novela>()
-    val novelas: List<Novela> get() = _novelas
+class NovelaViewModel : ViewModel() {
+    private val database: DatabaseReference = FirebaseDatabase.getInstance().getReference("novelas")
+    private val usersDatabase: DatabaseReference = FirebaseDatabase.getInstance().getReference("users")
+
+    private val _novelas = MutableStateFlow<List<Novela>>(emptyList())
+    val novelas = _novelas.asStateFlow()
 
     init {
-        loadNovelas()
-    }
+        database.addValueEventListener(object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                val novelasList = mutableListOf<Novela>()
+                snapshot.children.forEach { data ->
+                    data.getValue(Novela::class.java)?.let { novelasList.add(it) }
+                }
+                _novelas.value = novelasList
+            }
 
-    private fun loadNovelas() {
-        viewModelScope.launch(Dispatchers.IO) {
-            val novelasFromDb = novelaDao.getAllNovelas()
-            _novelas.clear()
-            _novelas.addAll(novelasFromDb)
-        }
+            override fun onCancelled(error: DatabaseError) {
+                Log.e("NovelaViewModel", "Database error: ${error.message}")
+            }
+        })
     }
 
     fun agregarNovela(novela: Novela) {
-        viewModelScope.launch(Dispatchers.IO) {
-            novelaDao.addNovela(novela)
-            loadNovelas()
-        }
+        database.child(novela.id.toString()).setValue(novela)
     }
 
-    fun eliminarNovela(novela: Novela) {
-        viewModelScope.launch(Dispatchers.IO) {
-            novelaDao.deleteNovela(novela.titulo)
-            loadNovelas()
-        }
+    fun eliminarNovela(id: String) {
+        database.child(id).removeValue()
     }
 
-    fun marcarFavorita(novela: Novela) {
-        val index = _novelas.indexOf(novela)
-        if (index >= 0) {
-            _novelas[index] = _novelas[index].copy(esFavorita = !novela.esFavorita)
-        }
+    fun toggleFavorito(id: String, esFavorita: Boolean) {
+        database.child(id).child("esFavorita").setValue(!esFavorita)
     }
 
-    fun agregarResena(novela: Novela, resena: String) {
-        val index = _novelas.indexOf(novela)
-        if (index >= 0) {
-            _novelas[index].resenas.add(resena)
-        }
+    fun registrarUsuario(nombre: String, apellido: String) {
+        val userId = usersDatabase.push().key ?: return
+        val usuario = Usuario(id = userId, nombre = nombre, apellido = apellido)
+        usersDatabase.child(userId).setValue(usuario)
     }
 }

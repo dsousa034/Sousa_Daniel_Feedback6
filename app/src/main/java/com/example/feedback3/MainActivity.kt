@@ -1,220 +1,270 @@
 package com.example.feedback3
 
-import android.Manifest
-import android.app.job.JobInfo
-import android.app.job.JobScheduler
-import android.content.ComponentName
-import android.content.Context
-import android.content.pm.PackageManager
 import android.os.Bundle
-import android.os.Environment
-import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.core.app.ActivityCompat
-import androidx.core.content.ContextCompat
-import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.NavHostController
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
-import androidx.navigation.compose.rememberNavController
-import java.io.File
-import java.io.FileInputStream
-import java.io.FileOutputStream
-import java.io.IOException
-import java.nio.channels.FileChannel
-import java.nio.file.StandardOpenOption
 
 class MainActivity : ComponentActivity() {
-    private lateinit var preferencesManager: PreferencesManager
-    private lateinit var internalStorageManager: InternalStorageManager
-    private lateinit var externalStorageManager: ExternalStorageManager
+    private val viewModel = NovelaViewModel()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        preferencesManager = PreferencesManager(this)
-        internalStorageManager = InternalStorageManager(this)
-        externalStorageManager = ExternalStorageManager(this)
-
-        // Apply the theme based on the preference
-        val isDarkMode = preferencesManager.isDarkMode()
-        AppCompatDelegate.setDefaultNightMode(
-            if (isDarkMode) AppCompatDelegate.MODE_NIGHT_YES else AppCompatDelegate.MODE_NIGHT_NO
-        )
-
-        // Request permissions for external storage
-        requestStoragePermissions()
-
         setContent {
-            NovelaApp()
-        }
-        scheduleJob()
-        scheduleAlarm(this) // Schedule the alarm for daily sync
-    }
+            var showRegistrationScreen by remember { mutableStateOf(true) }
+            var showAdminScreen by remember { mutableStateOf(false) }
+            var showDialog by remember { mutableStateOf(false) }
+            var showFavoritasScreen by remember { mutableStateOf(false) }
 
-    private fun requestStoragePermissions() {
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE), 1)
-        }
-    }
-
-    // Handle permission result
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == 1) {
-            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                Toast.makeText(this, "Permission granted", Toast.LENGTH_SHORT).show()
+            if (showRegistrationScreen) {
+                RegistrationScreen { nombre, apellido ->
+                    viewModel.registrarUsuario(nombre, apellido)
+                    showRegistrationScreen = false
+                }
             } else {
-                Toast.makeText(this, "Permission denied", Toast.LENGTH_SHORT).show()
-            }
-        }
-    }
-
-    // Schedule JobScheduler for background sync
-    private fun scheduleJob() {
-        val componentName = ComponentName(this, DataSyncJobService::class.java)
-        val jobInfo = JobInfo.Builder(1, componentName)
-            .setRequiredNetworkType(JobInfo.NETWORK_TYPE_UNMETERED) // Only Wi-Fi
-            .setPeriodic(15 * 60 * 1000) // Every 15 minutes
-            .build()
-
-        val jobScheduler = getSystemService(JOB_SCHEDULER_SERVICE) as JobScheduler
-        jobScheduler.schedule(jobInfo)
-    }
-}
-
-fun backupDatabase(context: Context) {
-    if (ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
-        ActivityCompat.requestPermissions(context as MainActivity, arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE), 1)
-        return
-    }
-
-    val dbFile = context.getDatabasePath("novelas.db")
-    val backupFile = File(Environment.getExternalStorageDirectory(), "novelas_backup.db")
-
-    try {
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-            FileChannel.open(dbFile.toPath()).use { source: FileChannel ->
-                FileChannel.open(backupFile.toPath(), StandardOpenOption.CREATE, StandardOpenOption.WRITE).use { destination: FileChannel ->
-                    destination.transferFrom(source, 0, source.size())
-                }
-            }
-        } else {
-            FileInputStream(dbFile).use { source ->
-                FileOutputStream(backupFile).use { destination ->
-                    destination.channel.transferFrom(source.channel, 0, source.channel.size())
+                when {
+                    showAdminScreen -> {
+                        AdminNovelasScreen(
+                            viewModel = viewModel,
+                            onBackClick = { showAdminScreen = false }
+                        )
+                    }
+                    showDialog -> {
+                        AddNovelaDialog(
+                            onDismiss = { showDialog = false },
+                            onSave = { novela ->
+                                viewModel.agregarNovela(novela)
+                                showDialog = false
+                            },
+                            onBackClick = { showDialog = false }
+                        )
+                    }
+                    showFavoritasScreen -> {
+                        FavoritasScreen(
+                            viewModel = viewModel,
+                            onBackClick = { showFavoritasScreen = false }
+                        )
+                    }
+                    else -> {
+                        MainScreen(
+                            onAddNovelaClick = { showDialog = true },
+                            onManageNovelasClick = { showAdminScreen = true },
+                            onFavoritasClick = { showFavoritasScreen = true }
+                        )
+                    }
                 }
             }
         }
-        Toast.makeText(context, "Backup successful", Toast.LENGTH_SHORT).show()
-    } catch (e: IOException) {
-        e.printStackTrace()
-        Toast.makeText(context, "Backup failed: ${e.message}", Toast.LENGTH_SHORT).show()
     }
 }
 
-fun restoreDatabase(context: Context) {
-    if (ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
-        ActivityCompat.requestPermissions(context as MainActivity, arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE), 1)
-        return
-    }
-
-    val dbFile = context.getDatabasePath("novelas.db")
-    val backupFile = File(Environment.getExternalStorageDirectory(), "novelas_backup.db")
-
-    try {
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-            FileChannel.open(backupFile.toPath()).use { source: FileChannel ->
-                FileChannel.open(dbFile.toPath(), StandardOpenOption.CREATE, StandardOpenOption.WRITE).use { destination: FileChannel ->
-                    destination.transferFrom(source, 0, source.size())
-                }
-            }
-        } else {
-            FileInputStream(backupFile).use { source ->
-                FileOutputStream(dbFile).use { destination ->
-                    destination.channel.transferFrom(source.channel, 0, source.channel.size())
-                }
-            }
-        }
-        Toast.makeText(context, "Restore successful", Toast.LENGTH_SHORT).show()
-    } catch (e: IOException) {
-        e.printStackTrace()
-        Toast.makeText(context, "Restore failed: ${e.message}", Toast.LENGTH_SHORT).show()
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun NovelaApp() {
-    val navController = rememberNavController()
-    val viewModel: NovelaViewModel = viewModel()
+fun AddNovelaDialog(onDismiss: () -> Unit, onSave: (Novela) -> Unit, onBackClick: () -> Unit) {
+    var titulo by remember { mutableStateOf("") }
+    var autor by remember { mutableStateOf("") }
+    var anoPublicacion by remember { mutableStateOf("") }
+    var sinopsis by remember { mutableStateOf("") }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(text = "Gestión de Novelas") },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(text = "Añadir Novela") },
+        text = {
+            Column {
+                TextField(
+                    value = titulo,
+                    onValueChange = { titulo = it },
+                    label = { Text("Título") }
                 )
-            )
+                TextField(
+                    value = autor,
+                    onValueChange = { autor = it },
+                    label = { Text("Autor") }
+                )
+                TextField(
+                    value = anoPublicacion,
+                    onValueChange = { anoPublicacion = it },
+                    label = { Text("Año de Publicación") }
+                )
+                TextField(
+                    value = sinopsis,
+                    onValueChange = { sinopsis = it },
+                    label = { Text("Sinopsis") }
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Button(onClick = onBackClick) {
+                    Text("Volver a la pantalla principal")
+                }
+            }
         },
-        content = { paddingValues ->
-            Box(modifier = Modifier.padding(paddingValues)) {
-                NavigationHost(navController = navController, viewModel = viewModel)
+        confirmButton = {
+            Button(onClick = {
+                val nuevaNovela = Novela(
+                    id = System.currentTimeMillis().toInt(),
+                    titulo = titulo,
+                    autor = autor,
+                    anoPublicacion = anoPublicacion.toIntOrNull() ?: 0,
+                    sinopsis = sinopsis
+                )
+                onSave(nuevaNovela)
+            }) {
+                Text("Guardar")
+            }
+        },
+        dismissButton = {
+            Button(onClick = onDismiss) {
+                Text("Cancelar")
             }
         }
     )
 }
 
 @Composable
-fun NavigationHost(navController: NavHostController, viewModel: NovelaViewModel) {
-    NavHost(navController = navController, startDestination = "main") {
-        composable("main") {
-            PantallaPrincipal(
-                novelas = viewModel.novelas,
-                onAgregarClick = { navController.navigate("agregar") },
-                onEliminarClick = { novela: Novela -> viewModel.eliminarNovela(novela) },
-                onVerDetallesClick = { novela: Novela ->
-                    navController.navigate("detalles/${novela.titulo}")
-                },
-                onSettingsClick = { navController.navigate("settings") }
-            )
+fun AdminNovelasScreen(viewModel: NovelaViewModel, onBackClick: () -> Unit) {
+    val novelas by viewModel.novelas.collectAsState()
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp)
+    ) {
+        Text(
+            text = "Listar Novelas",
+            style = MaterialTheme.typography.headlineLarge,
+            fontWeight = FontWeight.Bold
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        Button(onClick = onBackClick) {
+            Text("Volver a la pantalla principal")
         }
-        composable("settings") {
-            val context = androidx.compose.ui.platform.LocalContext.current
-            SettingsScreen(
-                context = context,
-                onBackup = { backupDatabase(context) },
-                onRestore = { restoreDatabase(context) },
-                onBack = { navController.popBackStack() }
-            )
-        }
-        composable("agregar") {
-            AgregarNovela { novela: Novela ->
-                viewModel.agregarNovela(novela)
-                navController.popBackStack()
+        Spacer(modifier = Modifier.height(16.dp))
+        if (novelas.isEmpty()) {
+            Text(text = "No hay ninguna novela guardada")
+        } else {
+            LazyColumn {
+                items(novelas) { novela ->
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(8.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp)
+                        ) {
+                            Text(text = novela.titulo, fontWeight = FontWeight.Bold)
+                            Text(text = "Autor: ${novela.autor}")
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Row {
+                                Button(onClick = { viewModel.toggleFavorito(novela.id.toString(), novela.esFavorita) }) {
+                                    Text(text = if (novela.esFavorita) "Quitar de favoritos" else "Añadir a favoritos")
+                                }
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Button(onClick = { viewModel.eliminarNovela(novela.id.toString()) }) {
+                                    Text(text = "Eliminar novela")
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
-        composable("detalles/{titulo}") { backStackEntry ->
-            val titulo = backStackEntry.arguments?.getString("titulo") ?: "Título no disponible"
-            val novela = viewModel.novelas.firstOrNull { it.titulo == titulo }
-            novela?.let {
-                DetallesNovela(
-                    novela = it,
-                    onMarcarFavorita = { novela: Novela ->
-                        viewModel.marcarFavorita(novela)
-                    },
-                    onVolver = { navController.popBackStack() }
-                )
+    }
+}
+@Composable
+fun FavoritasScreen(viewModel: NovelaViewModel, onBackClick: () -> Unit) {
+    val novelas by viewModel.novelas.collectAsState()
+    val favoritas = novelas.filter { it.esFavorita }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp)
+    ) {
+        Text(
+            text = "Novelas Favoritas",
+            style = MaterialTheme.typography.headlineLarge,
+            fontWeight = FontWeight.Bold
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        Button(onClick = onBackClick) {
+            Text("Volver a la pantalla principal")
+        }
+        Spacer(modifier = Modifier.height(16.dp))
+        if (favoritas.isEmpty()) {
+            Text(text = "Aún no se han agregado novelas favoritas")
+        } else {
+            LazyColumn {
+                items(favoritas) { novela ->
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(8.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp)
+                        ) {
+                            Text(text = novela.titulo, fontWeight = FontWeight.Bold)
+                            Text(text = "Autor: ${novela.autor}")
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Row {
+                                Button(onClick = { viewModel.toggleFavorito(novela.id.toString(), novela.esFavorita) }) {
+                                    Text(text = if (novela.esFavorita) "Quitar de favoritos" else "Añadir a favoritos")
+                                }
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Button(onClick = { viewModel.eliminarNovela(novela.id.toString()) }) {
+                                    Text(text = "Eliminar novela")
+                                }
+                            }
+                        }
+                    }
+                }
             }
+        }
+    }
+}
+@Composable
+fun RegistrationScreen(onRegister: (String, String) -> Unit) {
+    var nombre by remember { mutableStateOf("") }
+    var apellido by remember { mutableStateOf("") }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text(
+            text = "Gestor de Novelas",
+            style = MaterialTheme.typography.headlineLarge,
+            fontWeight = FontWeight.Bold
+        )
+        Spacer(modifier = Modifier.height(32.dp))
+        TextField(
+            value = nombre,
+            onValueChange = { nombre = it },
+            label = { Text("Nombre") }
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        TextField(
+            value = apellido,
+            onValueChange = { apellido = it },
+            label = { Text("Apellido") }
+        )
+        Spacer(modifier = Modifier.height(32.dp))
+        Button(onClick = { onRegister(nombre, apellido) }) {
+            Text("Registrar")
         }
     }
 }

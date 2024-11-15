@@ -6,13 +6,13 @@ plugins {
 }
 
 android {
-    namespace = "com.example.feedback3"
-    compileSdk = 34
+    namespace = "com.example.feedback4_"
+    compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.example.feedback3"
-        minSdk = 24
-        targetSdk = 34
+        applicationId = "com.example.feedback4_"
+        minSdk = 21
+        targetSdk = 35
         versionCode = 1
         versionName = "1.0"
 
@@ -42,38 +42,24 @@ android {
 
 dependencies {
 
+    implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation(libs.androidx.activity.compose)
+    implementation(platform(libs.androidx.compose.bom))
+    implementation(libs.androidx.ui)
+    implementation(libs.androidx.ui.graphics)
+    implementation(libs.androidx.ui.tooling.preview)
+    implementation(libs.androidx.material3)
+    implementation(libs.androidx.room.common)
+    implementation(libs.firebase.firestore.ktx)
+    implementation(libs.androidx.navigation.compose)
+    implementation(libs.firebase.database.ktx)
+    testImplementation(libs.junit)
+    androidTestImplementation(libs.androidx.junit)
+    androidTestImplementation(libs.androidx.espresso.core)
+    androidTestImplementation(platform(libs.androidx.compose.bom))
+    androidTestImplementation(libs.androidx.ui.test.junit4)
+    debugImplementation(libs.androidx.ui.tooling)
+    debugImplementation(libs.androidx.ui.test.manifest)
     implementation(platform("com.google.firebase:firebase-bom:33.5.1"))
-    implementation("com.google.firebase:firebase-firestore-ktx")
-    implementation("androidx.core:core-ktx:1.10.1")
-    implementation("androidx.appcompat:appcompat:1.6.1")
-    implementation("com.google.android.material:material:1.9.0")
-    implementation("androidx.constraintlayout:constraintlayout:2.1.4")
-    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.6.1")
-    implementation("androidx.activity:activity-compose:1.7.2")
-    implementation("androidx.compose.ui:ui:1.4.3")
-    implementation("androidx.compose.material3:material3:1.1.0")
-    implementation("androidx.compose.ui:ui-tooling-preview:1.4.3")
-    implementation("androidx.navigation:navigation-compose:2.5.3")
-    implementation("com.google.accompanist:accompanist-navigation-animation:0.30.1")
-    implementation("com.google.accompanist:accompanist-navigation-material:0.30.1")
-    implementation("androidx.hilt:hilt-navigation-compose:1.0.0")
-    implementation("com.google.dagger:hilt-android:2.44")
-    implementation("androidx.hilt:hilt-lifecycle-viewmodel:1.0.0-alpha03")
-    implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.6.1")
-    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.6.1")
-    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.6.1")
-    implementation("androidx.lifecycle:lifecycle-livedata-ktx:2.6.1")
-    implementation("androidx.lifecycle:lifecycle-common-java8:2.6.1")
-    implementation("androidx.lifecycle:lifecycle-service:2.6.1")
-    implementation("androidx.lifecycle:lifecycle-process:2.6.1")
-    implementation("androidx.lifecycle:lifecycle-reactivestreams-ktx:2.6.1")
-    implementation("androidx.lifecycle:lifecycle-reactivestreams:2.6.1")
-    implementation("androidx.lifecycle:lifecycle-extensions:2.2.0")
-    implementation("androidx.lifecycle:lifecycle-viewmodel-savedstate:2.6.1")
-    implementation("androidx.lifecycle:lifecycle-viewmodel-savedstate-ktx:2.6.1")
-    implementation("androidx.lifecycle:lifecycle-viewmodel-savedstate-compose:2.6.1")
-    implementation("androidx.lifecycle:lifecycle-viewmodel-savedstate-compose-ktx:2.6.1")
-    implementation("androidx.lifecycle:lifecycle-viewmodel-savedstate-compose-runtime:2.6.1")
-    implementation("androidx.lifecycle:lifecycle-viewmodel-savedstate-compose-runtime-ktx:2.6.1")
-
 }

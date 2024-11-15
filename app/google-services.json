@@ -2,7 +2,7 @@
   "project_info": {
     "project_number": "802132968286",
     "project_id": "novelas-23ae3",
-    "storage_bucket": "novelas-23ae3.appspot.com"
+    "storage_bucket": "novelas-23ae3.firebasestorage.app"
   },
   "client": [
     {
@@ -10,6 +10,25 @@
         "mobilesdk_app_id": "1:802132968286:android:d11a997ba345d74c5545cf",
         "android_client_info": {
           "package_name": "com.example.feedback3"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC6mMbL_dYfO0WBZlBGxZYAnjj7PLWGONU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:802132968286:android:f831175b25afeddb5545cf",
+        "android_client_info": {
+          "package_name": "com.example.feedback4_"
         }
       },
       "oauth_client": [],
