@@ -1,6 +1,10 @@
 package com.example.feedback3
 
+import android.content.res.Resources
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.os.Bundle
+import android.widget.ImageView
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
@@ -12,12 +16,21 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import java.io.ByteArrayOutputStream
+import java.util.zip.GZIPOutputStream
+import android.app.job.JobInfo
+import android.app.job.JobScheduler
+import android.content.ComponentName
+import android.content.Context
 
 class MainActivity : ComponentActivity() {
     private val viewModel = NovelaViewModel()
+    private lateinit var bitmap: Bitmap
+    private lateinit var imageView: ImageView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
         setContent {
             var showRegistrationScreen by remember { mutableStateOf(true) }
             var showAdminScreen by remember { mutableStateOf(false) }
@@ -63,6 +76,11 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+    override fun onDestroy() {
+        super.onDestroy()
+        imageView.setImageBitmap(null)
+        bitmap.recycle()
     }
 }
 
@@ -267,4 +285,56 @@ fun RegistrationScreen(onRegister: (String, String) -> Unit) {
             Text("Registrar")
         }
     }
+}
+fun decodeSampledBitmapFromResource(res: Resources, resId: Int, reqWidth: Int, reqHeight: Int): Bitmap {
+    // First decode with inJustDecodeBounds=true to check dimensions
+    val options = BitmapFactory.Options().apply {
+        inJustDecodeBounds = true
+    }
+    BitmapFactory.decodeResource(res, resId, options)
+
+    // Calculate inSampleSize
+    options.inSampleSize = calculateInSampleSize(options, reqWidth, reqHeight)
+
+    // Decode bitmap with inSampleSize set
+    options.inJustDecodeBounds = false
+    return BitmapFactory.decodeResource(res, resId, options)
+}
+
+fun calculateInSampleSize(options: BitmapFactory.Options, reqWidth: Int, reqHeight: Int): Int {
+    // Raw height and width of image
+    val (height: Int, width: Int) = options.run { outHeight to outWidth }
+    var inSampleSize = 1
+
+    if (height > reqHeight || width > reqWidth) {
+        val halfHeight: Int = height / 2
+        val halfWidth: Int = width / 2
+
+        // Calculate the largest inSampleSize value that is a power of 2 and keeps both
+        // height and width larger than the requested height and width.
+        while (halfHeight / inSampleSize >= reqHeight && halfWidth / inSampleSize >= reqWidth) {
+            inSampleSize *= 2
+        }
+    }
+
+    return inSampleSize
+}
+
+fun compressData(data: ByteArray): ByteArray {
+    val byteArrayOutputStream = ByteArrayOutputStream()
+    GZIPOutputStream(byteArrayOutputStream).use { gzipOutputStream ->
+        gzipOutputStream.write(data)
+    }
+    return byteArrayOutputStream.toByteArray()
+}
+
+fun scheduleJob(context: Context) {
+    val componentName = ComponentName(context, MyJobService::class.java)
+    val jobInfo = JobInfo.Builder(123, componentName)
+        .setRequiredNetworkType(JobInfo.NETWORK_TYPE_ANY)
+        .setPeriodic(15 * 60 * 1000) // 15 minutos
+        .build()
+
+    val jobScheduler = context.getSystemService(Context.JOB_SCHEDULER_SERVICE) as JobScheduler
+    jobScheduler.schedule(jobInfo)
 }
