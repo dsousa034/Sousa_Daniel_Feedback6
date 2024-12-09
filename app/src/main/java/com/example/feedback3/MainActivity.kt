@@ -22,6 +22,10 @@ import android.app.job.JobInfo
 import android.app.job.JobScheduler
 import android.content.ComponentName
 import android.content.Context
+import androidx.compose.foundation.Image
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.platform.LocalContext
+import com.example.feedback4_.R
 
 class MainActivity : ComponentActivity() {
     private val viewModel = NovelaViewModel()
@@ -145,8 +149,30 @@ fun AddNovelaDialog(onDismiss: () -> Unit, onSave: (Novela) -> Unit, onBackClick
 }
 
 @Composable
+fun ImageDialog(imageBitmap: Bitmap, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        text = {
+            Image(
+                bitmap = imageBitmap.asImageBitmap(),
+                contentDescription = null,
+                modifier = Modifier.fillMaxWidth()
+            )
+        },
+        confirmButton = {
+            Button(onClick = onDismiss) {
+                Text("Cerrar")
+            }
+        }
+    )
+}
+
+@Composable
 fun AdminNovelasScreen(viewModel: NovelaViewModel, onBackClick: () -> Unit) {
     val novelas by viewModel.novelas.collectAsState()
+    var showImageDialog by remember { mutableStateOf(false) }
+    var selectedImageBitmap by remember { mutableStateOf<Bitmap?>(null) }
+    val context = LocalContext.current
 
     Column(
         modifier = Modifier
@@ -181,13 +207,33 @@ fun AdminNovelasScreen(viewModel: NovelaViewModel, onBackClick: () -> Unit) {
                             Text(text = novela.titulo, fontWeight = FontWeight.Bold)
                             Text(text = "Autor: ${novela.autor}")
                             Spacer(modifier = Modifier.height(8.dp))
-                            Row {
-                                Button(onClick = { viewModel.toggleFavorito(novela.id.toString(), novela.esFavorita) }) {
-                                    Text(text = if (novela.esFavorita) "Quitar de favoritos" else "Añadir a favoritos")
+                            Column(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Button(onClick = { viewModel.toggleFavorito(novela.id.toString(), novela.esFavorita) }) {
+                                        Text(text = if (novela.esFavorita) "Quitar de favoritos" else "Añadir a favoritos")
+                                    }
+                                    Button(onClick = { viewModel.eliminarNovela(novela.id.toString()) }) {
+                                        Text(text = "Eliminar novela")
+                                    }
                                 }
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Button(onClick = { viewModel.eliminarNovela(novela.id.toString()) }) {
-                                    Text(text = "Eliminar novela")
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Button(onClick = {
+                                    // Load the image bitmap here
+                                    selectedImageBitmap = decodeSampledBitmapFromResource(
+                                        res = context.resources,
+                                        resId = R.drawable.map_image, // Replace with your image resource ID
+                                        reqWidth = 200,
+                                        reqHeight = 200
+                                    )
+                                    showImageDialog = true
+                                }) {
+                                    Text(text = "Mostrar mapa biblioteca")
                                 }
                             }
                         }
@@ -195,6 +241,10 @@ fun AdminNovelasScreen(viewModel: NovelaViewModel, onBackClick: () -> Unit) {
                 }
             }
         }
+    }
+
+    if (showImageDialog && selectedImageBitmap != null) {
+        ImageDialog(imageBitmap = selectedImageBitmap!!, onDismiss = { showImageDialog = false })
     }
 }
 @Composable
@@ -251,6 +301,7 @@ fun FavoritasScreen(viewModel: NovelaViewModel, onBackClick: () -> Unit) {
         }
     }
 }
+
 @Composable
 fun RegistrationScreen(onRegister: (String, String) -> Unit) {
     var nombre by remember { mutableStateOf("") }
