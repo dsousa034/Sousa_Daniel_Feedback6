@@ -1,6 +1,5 @@
 # Feedback6
-https://github.com/dsousa034/Feedback3_Novelas.git
-
+https://github.com/dsousa034/Sousa_Daniel_Feedback6.git
 ## Descripción
 Este proyecto es una aplicación Android desarrollada en Kotlin que permite a los usuarios agregar, visualizar y gestionar novelas. Utiliza Firebase Firestore para el almacenamiento de datos y está construido con Jetpack Compose para la interfaz de usuario.
 
